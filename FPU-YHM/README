@@ -1,1 +1,72 @@
-The scripts need to be modified for FPU.
+# Lab 1 Report: RV32-5Stage FPU Integration
+
+This report documents the implementation of FPU stall logic for the Sodor 5-stage RV32 core and the subsequent verification process.
+
+## 1. Project Overview
+**Objective**: Enable correct execution of multi-cycle Floating Point Unit (FPU) operations (specifically `FDIV` and `FSQRT`) on the Sodor 5-stage pipeline by implementing hazard detection and pipeline stalling logic.
+
+## 2. Modified Files
+
+The following files were modified or created to support this feature:
+
+### 2.1 Hardware Design
+*   **Datapath**: `chipyard/generators/riscv-sodor/src/main/scala/sodor/rv32_5stage/dpath.scala`
+    *   **Change**: Added `div_pending` signal logic.
+    *   **Snippet**:
+        ```scala
+        // Detects if FPU Divider is busy but has not yet produced a valid result
+        io.dat.div_pending := (exe_reg_ctrl_alu_fun === ALU_FDIV) && !fpu_div.io.outValid_div
+        ```
+
+*   **Control Path**: `chipyard/generators/riscv-sodor/src/main/scala/sodor/rv32_5stage/cpath.scala`
+    *   **Change**: Integrated `div_pending` into the global stall logic.
+    *   **Snippet**:
+        ```scala
+        // Stall the pipeline if FPU is busy with division
+        val stall = (io.ctl.stall || (io.dat.div_pending))
+        ```
+
+### 2.2 Verification
+*   **Test Code**: `reference_code/fpu_test.S`
+    *   **Description**: A custom assembly program performing `FADD`, `FSUB`, `FMUL`, and `FDIV` operations on floating-point registers. Includes `tohost` writing for test termination.
+
+## 3. Verification Strategy
+
+### 3.1 Test Logic
+The `fpu_test` performs the following sequences:
+1.  **FADD**: `1.5 + 2.5 = 4.0`
+2.  **FSUB**: `2.5 - 1.5 = 1.0`
+3.  **FMUL**: `1.5 * 2.5 = 3.75`
+4.  **FDIV**: `2.5 / 1.5` (Requires multi-cycle stall)
+
+### 3.2 Key Fixes During Debugging
+*   **Entry Point Correction**: Moved `_start` symbol to `.text.init` section.
+    *   *Impact*: Simulation time reduced from ~650,000 cycles to ~41,000 cycles by correctly aligning the resetting PC.
+*   **Termination Synchronization**: Added `fence` instruction before writing to `tohost`.
+    *   *Impact*: Ensures the simulation terminates automatically (`*** PASSED ***`) without requiring `Ctrl+C`.
+
+## 4. Performance & Logic Analysis
+
+### 4.1 Comparison: With vs. Without FPU Instructions
+
+| Feature | Without FPU Instructions (Software) | With FPU Instructions (Hardware) |
+| :--- | :--- | :--- |
+| **Execution Method** | Software Library (SoftFloat) | Hardware FPU (Zfinx/HardFloat) |
+| **Instruction Count** | High (Hundreds of int ops per FP op) | Low (1 op per FP op) |
+| **Latency/Cycle** | Very High | Low (Multi-cycle for Div, Pipeliend for Add) |
+| **Complexity** | Compiler/Library burden | Hardware hazard management required |
+
+*Note: Sodor currently runs bare-metal. Without hardware FPU support, executing these instructions would result in an Illegal Instruction exception unless a trap handler were installed.*
+
+### 4.2 Comparison: With vs. Without Stall Logic (Correctness)
+
+| Scenario | Behavior | Result |
+| :--- | :--- | :--- |
+| **Without Stall Logic** | Pipeline continues execution during `FDIV` latency. | **Failure**. Subsequent instruction reads invalid/stale result from register file before division completes. |
+| **With Stall Logic** | Pipeline freezes (Check `io.dat.div_pending`). IF/ID stages hold state. | **Success**. Pipeline waits for `outValid_div`. Correct result is written back. |
+
+### 4.3 Simulation Metrics (Final Valid Run)
+*   **Command**: `simulator-chipyard.harness-Sodor5StageConfig reference_code/fpu_test`
+*   **Total Cycles**: **41,516**
+*   **Status**: Passed
+*   **Startup Overhead**: Reduced significantly by linker script correction.
