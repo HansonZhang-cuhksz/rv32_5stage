@@ -70,3 +70,27 @@ The `fpu_test` performs the following sequences:
 *   **Total Cycles**: **41,516**
 *   **Status**: Passed
 *   **Startup Overhead**: Reduced significantly by linker script correction.
+
+## 5. Quantitative Analysis (Trace Analyzer)
+
+Using `tracer.py` to analyze the execution of `fpu_test`:
+
+### 5.1 Trace Results
+*   **Total Cycles**: 87,601
+*   **Total Instructions**: 10,016
+*   **CPI (Cycles Per Instruction)**: 8.746
+*   **IPC (Instructions Per Cycle)**: 0.114
+
+### 5.2 Instruction Mix
+| Instruction Type | Percentage |
+| :--- | :--- |
+| **Arithmetic** (incl. FPU) | 45.85% |
+| **Load/Store** | 16.65% |
+| **Branch/Jump** | 12.50% |
+| **Misc** | 25.00% |
+
+### 5.3 Analysis
+The high CPI (8.75) is primarily due to:
+1.  **FPU Latency**: Multi-cycle operations (FDIV) stall the pipeline significantly.
+2.  **Structural Hazards**: The simple 5-stage pipeline may stall on memory accesses or dependencies.
+3.  **Instruction Mix**: A heavy arithmetic workload (45.85%) stresses the execution stage.
