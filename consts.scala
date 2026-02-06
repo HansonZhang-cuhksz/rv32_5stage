@@ -174,6 +174,13 @@ trait ScalarOpConstants
    val RM_RMM  = 4.asUInt(3.W)
    val RM_DYN  = 7.asUInt(3.W)
    val RM_X    = 0.asUInt(3.W)
+
+   // CSR Type
+   val CSR_N      = 0.asUInt(2.W) // Normal
+   val CSR_FFLAGS = 1.asUInt(2.W)
+   val CSR_FRM    = 2.asUInt(2.W)
+   val CSR_FCSR   = 3.asUInt(2.W)
+   val CSR_X      = 0.asUInt(2.W)
 }
 
 }

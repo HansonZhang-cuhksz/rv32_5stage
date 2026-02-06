@@ -57,6 +57,11 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val io = IO(new DpathIo())
    io := DontCare
 
+   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
+   csr.io := DontCare
+   val fflags = RegInit(0.asUInt(5.W))
+   val frm = RegInit(0.asUInt(3.W))
+
    //**********************************
    // Exception handling values (all read during mem_stage)
    val mem_tval_data_ma = Wire(UInt(conf.xprlen.W))
@@ -137,6 +142,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val mem_reg_ctrl_frf_wen  = RegInit(false.B)
    val mem_reg_ctrl_fwb_sel  = Reg(UInt())
    val mem_reg_ctrl_mem_wr_sel = Reg(UInt())
+   val mem_reg_fflags        = Reg(UInt())
 
    // Writeback State
    val wb_reg_valid          = RegInit(false.B)
@@ -247,7 +253,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val dec_rs3_faddr = dec_reg_inst(31, 27)   // for FMA instructions
    val dec_wb_faddr  = dec_reg_inst(11, 7)
    val dec_rm_raw    = dec_reg_inst(14, 12)
-   val dec_rm        = Mux(dec_rm_raw === RM_DYN, RM_RNE, dec_rm_raw)
+   val dec_rm        = Mux(dec_rm_raw === RM_DYN, frm, dec_rm_raw)
 
    // Register File
    val regfile = Module(new RegisterFile())
@@ -631,6 +637,27 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                   (exe_reg_ctrl_fpu_fun === FPU_FNMADD_S) -> Cat(!fma_adder_out(31), fma_adder_out(30, 0))
                   ))
 
+   val exe_fflags = MuxCase(0.U, Array(
+                  (exe_reg_ctrl_fpu_fun === FPU_FADD_S)  -> fpu_adder.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FSUB_S)  -> fpu_adder.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMUL_S)  -> fpu_mul.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FDIV_S)  -> exe_fpu_op1,
+                  (exe_reg_ctrl_fpu_fun === FPU_FSQRT_S) -> exe_fpu_op1,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMIN_S)  -> fpu_cmp.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMAX_S)  -> fpu_cmp.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FEQ_S)   -> fpu_cmp.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FLT_S)   -> fpu_cmp.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FLE_S)   -> fpu_cmp.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FCVT_S_W)-> fpu_i2f.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FCVT_S_WU)-> fpu_i2f.io.exceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FCVT_W_S)-> fpu_f2i.io.intExceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FCVT_WU_S)-> fpu_f2i.io.intExceptionFlags,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMADD_S) -> (fpu_mul.io.exceptionFlags | fma_adder.io.exceptionFlags),
+                  (exe_reg_ctrl_fpu_fun === FPU_FMSUB_S) -> (fpu_mul.io.exceptionFlags | fma_adder.io.exceptionFlags),
+                  (exe_reg_ctrl_fpu_fun === FPU_FNMSUB_S) -> (fpu_mul.io.exceptionFlags | fma_adder.io.exceptionFlags),
+                  (exe_reg_ctrl_fpu_fun === FPU_FNMADD_S) -> (fpu_mul.io.exceptionFlags | fma_adder.io.exceptionFlags)
+                  ))
+
    // Branch/Jump Target Calculation
    val brjmp_offset    = exe_reg_op2_data
    exe_brjmp_target    := exe_reg_pc + brjmp_offset
@@ -655,6 +682,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       // F extension
       mem_reg_ctrl_frf_wen  := false.B
       mem_reg_ctrl_mem_wr_sel := 0.U
+      mem_reg_fflags        := 0.U
    }
    .elsewhen (!io.ctl.full_stall)
    {
@@ -686,6 +714,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       mem_reg_ctrl_frf_wen  := exe_reg_ctrl_frf_wen
       mem_reg_ctrl_fwb_sel  := exe_reg_ctrl_fwb_sel
       mem_reg_ctrl_mem_wr_sel := exe_reg_ctrl_mem_wr_sel
+      mem_reg_fflags        := exe_fflags
    }
 
    //**********************************
@@ -693,12 +722,47 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    // Control Status Registers
    // The CSRFile can redirect the PC so it's easiest to put this in Execute for now.
-   val csr = Module(new CSRFile(perfEventSets=CSREvents.events))
-   csr.io := DontCare
    csr.io.decode(0).inst := mem_reg_inst
    csr.io.rw.addr   := mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB)
    csr.io.rw.wdata  := mem_reg_alu_out
    csr.io.rw.cmd    := mem_reg_ctrl_csr_cmd
+
+   val csr_type = Wire(UInt(2.W))
+   csr_type := CSR_N
+   val new_fflags = (fflags | mem_reg_fflags)
+   when (mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB) === 0x001.U) {
+      fflags := MuxCase(new_fflags, Array(
+                  (mem_reg_ctrl_csr_cmd === CSR.W) -> mem_reg_alu_out,
+                  (mem_reg_ctrl_csr_cmd === CSR.S) -> (new_fflags | mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.C) -> (new_fflags & ~mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.I) -> mem_reg_alu_out
+               ))
+      csr_type := CSR_FFLAGS
+   }
+   .otherwise {
+      fflags := new_fflags
+   }
+   when (mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB) === 0x002.U) {
+      frm    := MuxCase(frm, Array(
+                  (mem_reg_ctrl_csr_cmd === CSR.W) -> mem_reg_alu_out,
+                  (mem_reg_ctrl_csr_cmd === CSR.S) -> (frm | mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.C) -> (frm & ~mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.I) -> mem_reg_alu_out
+               ))
+      csr_type := CSR_FRM
+   }
+   when (mem_reg_inst(CSR_ADDR_MSB,CSR_ADDR_LSB) === 0x003.U) {
+      val fcsr = Cat(0.U(24.W), fflags | mem_reg_fflags, frm)
+      val new_fcsr = MuxCase(fcsr, Array(
+                  (mem_reg_ctrl_csr_cmd === CSR.W) -> mem_reg_alu_out,
+                  (mem_reg_ctrl_csr_cmd === CSR.S) -> (fcsr | mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.C) -> (fcsr & ~mem_reg_alu_out),
+                  (mem_reg_ctrl_csr_cmd === CSR.I) -> mem_reg_alu_out
+               ))
+      fflags := new_fcsr(4, 0)
+      frm := new_fcsr(7, 5)
+      csr_type := CSR_FCSR
+   }
 
    csr.io.retire    := wb_reg_valid
    csr.io.exception := io.ctl.mem_exception
@@ -738,11 +802,16 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    mem_tval_data_ma := mem_reg_alu_out.asUInt
 
    // WB Mux
+   val csr_rdata = MuxCase(csr.io.rw.rdata, Array(
+                  (csr_type === CSR_FFLAGS) -> fflags,
+                  (csr_type === CSR_FRM)    -> frm,
+                  (csr_type === CSR_FCSR)   -> Cat(0.U(24.W), fflags, frm)
+                  ))
    mem_wbdata := MuxCase(mem_reg_alu_out, Array(
                   (mem_reg_ctrl_wb_sel === WB_ALU) -> mem_reg_alu_out,
                   (mem_reg_ctrl_wb_sel === WB_PC4) -> mem_reg_alu_out,
                   (mem_reg_ctrl_wb_sel === WB_MEM) -> io.dmem.resp.bits.data,
-                  (mem_reg_ctrl_wb_sel === WB_CSR) -> csr.io.rw.rdata,
+                  (mem_reg_ctrl_wb_sel === WB_CSR) -> csr_rdata,
                   (mem_reg_ctrl_wb_sel === WB_FPU) -> mem_reg_fpu_out
                   ))
    mem_fwbdata := MuxCase(mem_reg_fpu_out, Array(

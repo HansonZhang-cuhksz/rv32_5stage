@@ -177,7 +177,6 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
    val cs_alu_fun :: cs_fpu_fun :: cs_wb_sel :: cs_fwb_sel :: (cs_rf_wen: Bool) :: (cs_frf_wen: Bool) :: (cs_mem_en: Bool) :: cs_mem_fcn :: cs_mem_wr_sel :: cs_msk_sel :: cs_csr_cmd :: (cs_fencei: Bool) :: Nil = cs0
    val cs_frs3_oen = io.dat.dec_inst === FMADD_S || io.dat.dec_inst === FMSUB_S || io.dat.dec_inst === FNMADD_S || io.dat.dec_inst === FNMSUB_S
 
-
    // Branch Logic
    val ctrl_exe_pc_sel = Mux(io.ctl.pipeline_kill         , PC_EXC,
                          Mux(io.dat.exe_br_type === BR_N  , PC_4,
