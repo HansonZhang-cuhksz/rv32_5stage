@@ -50,9 +50,27 @@ class RegisterFile(implicit val conf: SodorCoreParams) extends Module
 
 }
 
+class FRFileIo(implicit val conf: SodorCoreParams) extends Bundle()
+{
+   val rs1_addr = Input(UInt(5.W))
+   val rs1_data = Output(UInt(conf.xprlen.W))
+   val rs2_addr = Input(UInt(5.W))
+   val rs2_data = Output(UInt(conf.xprlen.W))
+   val rs3_addr = Input(UInt(5.W))
+   val rs3_data = Output(UInt(conf.xprlen.W))
+   val dm_addr = Input(UInt(5.W))
+   val dm_rdata = Output(UInt(conf.xprlen.W))
+   val dm_wdata = Input(UInt(conf.xprlen.W))
+   val dm_en = Input(Bool())
+
+   val waddr    = Input(UInt(5.W))
+   val wdata    = Input(UInt(conf.xprlen.W))
+   val wen      = Input(Bool())
+}
+
 class FPRegisterFile(implicit val conf: SodorCoreParams) extends Module
 {
-   val io = IO(new RFileIo())
+   val io = IO(new FRFileIo())
 
    val regfile = Mem(32, UInt(conf.xprlen.W))
 
@@ -68,5 +86,6 @@ class FPRegisterFile(implicit val conf: SodorCoreParams) extends Module
 
    io.rs1_data := regfile(io.rs1_addr)
    io.rs2_data := regfile(io.rs2_addr)
+   io.rs3_data := regfile(io.rs3_addr)
    io.dm_rdata := regfile(io.dm_addr)
 }

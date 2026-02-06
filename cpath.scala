@@ -164,14 +164,18 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                   FCVT_S_WU -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_X   , FPU_FCVT_S_WU, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
 
                   FMV_X_W -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_0, ALU_X     , FPU_COPY_1, WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
-                  FMV_W_X -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_COPY_1, FPU_X     , WB_X, FWB_ALU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N)
+                  FMV_W_X -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_COPY_1, FPU_X     , WB_X, FWB_ALU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
                   
-
+                  FMADD_S ->List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FMADD_S, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FMSUB_S ->List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FMSUB_S, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FNMADD_S->List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FNMADD_S,WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FNMSUB_S->List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FNMSUB_S,WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N)
                   ))
 
    // Put these control signals in variables
    val (cs_val_inst: Bool) :: cs_br_type :: cs_op1_sel :: cs_op2_sel :: (cs_rs1_oen: Bool) :: (cs_rs2_oen: Bool) :: (cs_frs1_oen: Bool) :: (cs_frs2_oen: Bool) :: cs0 = csignals
    val cs_alu_fun :: cs_fpu_fun :: cs_wb_sel :: cs_fwb_sel :: (cs_rf_wen: Bool) :: (cs_frf_wen: Bool) :: (cs_mem_en: Bool) :: cs_mem_fcn :: cs_mem_wr_sel :: cs_msk_sel :: cs_csr_cmd :: (cs_fencei: Bool) :: Nil = cs0
+   val cs_frs3_oen = io.dat.dec_inst === FMADD_S || io.dat.dec_inst === FMSUB_S || io.dat.dec_inst === FNMADD_S || io.dat.dec_inst === FNMSUB_S
 
 
    // Branch Logic
@@ -208,9 +212,11 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
    // F extension
    val dec_rs1_faddr = io.dat.dec_inst(19, 15)
    val dec_rs2_faddr = io.dat.dec_inst(24, 20)
+   val dec_rs3_faddr = io.dat.dec_inst(31, 27)
    val dec_fwbaddr  = io.dat.dec_inst(11, 7)
    val dec_frs1_oen = Mux(deckill, false.B, cs_frs1_oen)
    val dec_frs2_oen = Mux(deckill, false.B, cs_frs2_oen)
+   val dec_frs3_oen = Mux(deckill, false.B, cs_frs3_oen)
 
    val exe_reg_wbaddr      = Reg(UInt())
    val mem_reg_wbaddr      = Reg(UInt())
@@ -302,6 +308,7 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs2_oen) ||
                ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||  // F extension
                ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
+               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
                (exe_reg_is_csr)
    }
    else
@@ -321,8 +328,12 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                ((exe_reg_fwbaddr === dec_rs2_faddr) && exe_reg_ctrl_frf_wen && dec_frs2_oen) ||
                ((mem_reg_fwbaddr === dec_rs2_faddr) && mem_reg_ctrl_frf_wen && dec_frs2_oen) ||
                ((wb_reg_fwbaddr  === dec_rs2_faddr) &&  wb_reg_ctrl_frf_wen && dec_frs2_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) |
+               ((exe_reg_fwbaddr === dec_rs3_faddr) && exe_reg_ctrl_frf_wen && dec_frs3_oen) ||
+               ((mem_reg_fwbaddr === dec_rs3_faddr) && mem_reg_ctrl_frf_wen && dec_frs3_oen) ||
+               ((wb_reg_fwbaddr  === dec_rs3_faddr) &&  wb_reg_ctrl_frf_wen && dec_frs3_oen) ||
+               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||
                ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
+               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
                ((exe_reg_is_csr))
    }
 

@@ -123,6 +123,10 @@ trait ScalarOpConstants
    val FPU_FCVT_S_WU=18.asUInt(FUN_SZ_FPU.W)
    val FPU_COPY_1 = 19.asUInt(FUN_SZ_FPU.W)
    val FPU_COPY_2 = 20.asUInt(FUN_SZ_FPU.W)
+   val FPU_FMADD_S = 21.asUInt(FUN_SZ_FPU.W)
+   val FPU_FMSUB_S = 22.asUInt(FUN_SZ_FPU.W)
+   val FPU_FNMADD_S= 23.asUInt(FUN_SZ_FPU.W)
+   val FPU_FNMSUB_S= 24.asUInt(FUN_SZ_FPU.W)
    val FPU_X      = 0.asUInt(FUN_SZ_FPU.W)
 
    // Writeback Select Signal

@@ -98,8 +98,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val exe_reg_fwbaddr       = Reg(UInt(5.W))
    val exe_reg_rs1_faddr     = Reg(UInt(5.W))
    val exe_reg_rs2_faddr     = Reg(UInt(5.W))
+   val exe_reg_rs3_faddr     = Reg(UInt(5.W))
    val exe_reg_fpu_op1_data  = Reg(UInt(conf.xprlen.W))
    val exe_reg_fpu_op2_data  = Reg(UInt(conf.xprlen.W))
+   val exe_reg_fpu_op3_data  = Reg(UInt(conf.xprlen.W))
    val exe_reg_ctrl_fpu_fun  = Reg(UInt())
    val exe_reg_ctrl_fwb_sel  = Reg(UInt())
    val exe_reg_ctrl_frf_wen  = RegInit(false.B)
@@ -128,8 +130,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val mem_reg_fwbaddr       = Reg(UInt())
    val mem_reg_rs1_faddr     = Reg(UInt())
    val mem_reg_rs2_faddr     = Reg(UInt())
+   val mem_reg_rs3_faddr     = Reg(UInt())
    val mem_reg_fpu_op1_data  = Reg(UInt(conf.xprlen.W))
    val mem_reg_fpu_op2_data  = Reg(UInt(conf.xprlen.W))
+   val mem_reg_fpu_op3_data  = Reg(UInt(conf.xprlen.W))
    val mem_reg_ctrl_frf_wen  = RegInit(false.B)
    val mem_reg_ctrl_fwb_sel  = Reg(UInt())
    val mem_reg_ctrl_mem_wr_sel = Reg(UInt())
@@ -240,9 +244,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // FP RegFile
    val dec_rs1_faddr = dec_reg_inst(19, 15)
    val dec_rs2_faddr = dec_reg_inst(24, 20)
+   val dec_rs3_faddr = dec_reg_inst(31, 27)   // for FMA instructions
    val dec_wb_faddr  = dec_reg_inst(11, 7)
-   val dec_rm        = dec_reg_inst(14, 12)
-
+   val dec_rm_raw    = dec_reg_inst(14, 12)
+   val dec_rm        = Mux(dec_rm_raw === RM_DYN, RM_RNE, dec_rm_raw)
 
    // Register File
    val regfile = Module(new RegisterFile())
@@ -259,8 +264,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // FP RegFile
    f_regfile.io.rs1_addr := dec_rs1_faddr
    f_regfile.io.rs2_addr := dec_rs2_faddr
+   f_regfile.io.rs3_addr := dec_rs3_faddr
    val f_rf_rs1_data = f_regfile.io.rs1_data
    val f_rf_rs2_data = f_regfile.io.rs2_data
+   val f_rf_rs3_data = f_regfile.io.rs3_data
    f_regfile.io.waddr := wb_reg_fwbaddr
    f_regfile.io.wdata := wb_reg_fwbdata
    f_regfile.io.wen   := wb_reg_ctrl_frf_wen
@@ -317,6 +324,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    val dec_rs2_data = Wire(UInt(conf.xprlen.W))
    val dec_fpu_op1_data = Wire(UInt(conf.xprlen.W))
    val dec_fpu_op2_data = Wire(UInt(conf.xprlen.W))
+   val dec_fpu_op3_data = Wire(UInt(conf.xprlen.W))
 
    if (USE_FULL_BYPASSING)
    {
@@ -351,6 +359,11 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                            ((mem_reg_fwbaddr === dec_rs2_faddr) && mem_reg_ctrl_frf_wen) -> mem_fwbdata,
                            ((wb_reg_fwbaddr  === dec_rs2_faddr) &&  wb_reg_ctrl_frf_wen) -> wb_reg_fwbdata
                            ))
+      dec_fpu_op3_data := MuxCase(f_rf_rs3_data, Array(
+                           ((exe_reg_fwbaddr === dec_rs3_faddr) && exe_reg_ctrl_frf_wen) -> exe_fpu_out,
+                           ((mem_reg_fwbaddr === dec_rs3_faddr) && mem_reg_ctrl_frf_wen) -> mem_fwbdata,
+                           ((wb_reg_fwbaddr  === dec_rs3_faddr) &&  wb_reg_ctrl_frf_wen) -> wb_reg_fwbdata
+                           ))
    }
    else
    {
@@ -367,6 +380,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                            f_rf_rs1_data
                            )
       dec_fpu_op2_data := f_rf_rs2_data
+      dec_fpu_op3_data := f_rf_rs3_data
    }
 
 
@@ -403,8 +417,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       // F extension
       exe_reg_rs1_faddr     := dec_rs1_faddr
       exe_reg_rs2_faddr     := dec_rs2_faddr
+      exe_reg_rs3_faddr     := dec_rs3_faddr
       exe_reg_fpu_op1_data  := dec_fpu_op1_data
       exe_reg_fpu_op2_data  := dec_fpu_op2_data
+      exe_reg_fpu_op3_data  := dec_fpu_op3_data
       exe_reg_ctrl_fpu_fun  := io.ctl.fpu_fun
       exe_reg_ctrl_fwb_sel  := io.ctl.fwb_sel
       exe_reg_ctrl_mem_wr_sel := io.ctl.mem_wr_sel
@@ -451,6 +467,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // F extension
    val exe_fpu_op1 = exe_reg_fpu_op1_data.asUInt
    val exe_fpu_op2 = exe_reg_fpu_op2_data.asUInt
+   val exe_fpu_op3 = exe_reg_fpu_op3_data.asUInt
 
    // ALU
    val alu_shamt     = exe_alu_op2(4,0).asUInt
@@ -496,6 +513,8 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    // Preprocess Operands
    val exe_fpu_op1_rec = recFNFromFN(8, 24, exe_fpu_op1)
    val exe_fpu_op2_rec = recFNFromFN(8, 24, exe_fpu_op2)
+   val exe_fpu_op3_rec = recFNFromFN(8, 24, exe_fpu_op3)
+   val exe_fpu_op3_rec_neg = recFNFromFN(8, 24, Cat(!exe_fpu_op3(31), exe_fpu_op3(30, 0)))
 
    // FADD / FSUB
    val fpu_adder = Module(new AddRecFN(8, 24))
@@ -511,15 +530,6 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
    fpu_mul.io.b := exe_fpu_op2_rec
    fpu_mul.io.roundingMode := exe_reg_rm
    fpu_mul.io.detectTininess := 0.U
-
-   // FDIV
-   val fpu_div = Module(new DivSqrtRecFN_small(8, 24, 0))
-   fpu_div.io.inValid := (exe_reg_ctrl_fpu_fun === FPU_FDIV_S)
-   fpu_div.io.sqrtOp := false.B
-   fpu_div.io.a := exe_fpu_op1_rec
-   fpu_div.io.b := exe_fpu_op2_rec
-   fpu_div.io.roundingMode := exe_reg_rm
-   fpu_div.io.detectTininess := 0.U
 
    // Compare (ordered) helper for FMIN/FMAX
    val fpu_cmp = Module(new CompareRecFN(8, 24))
@@ -585,6 +595,15 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
 
    val fcvt_w_s_bits = fpu_f2i.io.out
 
+   // FMA
+   val fma_adder = Module(new AddRecFN(8, 24))
+   fma_adder.io.subOp := (exe_reg_ctrl_fpu_fun === FPU_FMSUB_S) || (exe_reg_ctrl_fpu_fun === FPU_FNMSUB_S)
+   fma_adder.io.a := fpu_mul.io.out
+   fma_adder.io.b := exe_fpu_op3_rec
+   fma_adder.io.roundingMode := exe_reg_rm
+   fma_adder.io.detectTininess := 0.U
+   val fma_adder_out = fNFromRecFN(8, 24, fma_adder.io.out)
+
    exe_fpu_out := MuxCase(exe_reg_inst.asUInt, Array(
                   (exe_reg_ctrl_fpu_fun === FPU_FADD_S)  -> fNFromRecFN(8, 24, fpu_adder.io.out),
                   (exe_reg_ctrl_fpu_fun === FPU_FSUB_S)  -> fNFromRecFN(8, 24, fpu_adder.io.out),
@@ -605,7 +624,11 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
                   (exe_reg_ctrl_fpu_fun === FPU_FCVT_W_S)-> fcvt_w_s_bits,
                   (exe_reg_ctrl_fpu_fun === FPU_FCVT_WU_S)-> fcvt_w_s_bits,
                   (exe_reg_ctrl_fpu_fun === FPU_COPY_1)  -> exe_fpu_op1,
-                  (exe_reg_ctrl_fpu_fun === FPU_COPY_2)  -> exe_fpu_op2
+                  (exe_reg_ctrl_fpu_fun === FPU_COPY_2)  -> exe_fpu_op2,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMADD_S) -> fma_adder_out,
+                  (exe_reg_ctrl_fpu_fun === FPU_FMSUB_S) -> fma_adder_out,
+                  (exe_reg_ctrl_fpu_fun === FPU_FNMSUB_S) -> Cat(!fma_adder_out(31), fma_adder_out(30, 0)),
+                  (exe_reg_ctrl_fpu_fun === FPU_FNMADD_S) -> Cat(!fma_adder_out(31), fma_adder_out(30, 0))
                   ))
 
    // Branch/Jump Target Calculation
@@ -656,8 +679,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       mem_reg_fwbaddr       := exe_reg_fwbaddr
       mem_reg_rs1_faddr     := exe_reg_rs1_faddr
       mem_reg_rs2_faddr     := exe_reg_rs2_faddr
+      mem_reg_rs3_faddr     := exe_reg_rs3_faddr
       mem_reg_fpu_op1_data  := exe_reg_fpu_op1_data
       mem_reg_fpu_op2_data  := exe_reg_fpu_op2_data
+      mem_reg_fpu_op3_data  := exe_reg_fpu_op3_data
       mem_reg_ctrl_frf_wen  := exe_reg_ctrl_frf_wen
       mem_reg_ctrl_fwb_sel  := exe_reg_ctrl_fwb_sel
       mem_reg_ctrl_mem_wr_sel := exe_reg_ctrl_mem_wr_sel
