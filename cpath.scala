@@ -157,8 +157,16 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                   FLT_S  -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FLT_S , WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
                   FLE_S  -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FLE_S , WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
                   FCLASS_S->List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_0, ALU_X   , FPU_FCLASS_S, WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
-                  // FMV_X_W-> List(Y, BR_N  , OP1_RS1, OP2_X     , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FMV_X_W, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
-                  // FMV_W_X-> List(Y, BR_N  , OP1_RS1, OP2_X     , OEN_0, OEN_0,  OEN_1,  OEN_1, ALU_X   , FPU_FMV_W_X, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+
+                  FCVT_W_S  -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_0, ALU_X   , FPU_FCVT_W_S , WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FCVT_WU_S -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_0, ALU_X   , FPU_FCVT_WU_S, WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FCVT_S_W  -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_X   , FPU_FCVT_S_W , WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FCVT_S_WU -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_X   , FPU_FCVT_S_WU, WB_X, FWB_FPU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+
+                  FMV_X_W -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_0, OEN_0,  OEN_1,  OEN_0, ALU_X     , FPU_COPY_1, WB_FPU, FWB_X, REN_1, FREN_0, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N),
+                  FMV_W_X -> List(Y, BR_N  , OP1_RS1, OP2_RS2   , OEN_1, OEN_0,  OEN_0,  OEN_0, ALU_COPY_1, FPU_X     , WB_X, FWB_ALU, REN_0, FREN_1, MEN_0, M_X  , MWS_REG  , MT_X, CSR.N, N)
+                  
+
                   ))
 
    // Put these control signals in variables

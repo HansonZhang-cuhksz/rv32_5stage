@@ -117,6 +117,12 @@ trait ScalarOpConstants
    val FPU_FLT_S  = 12.asUInt(FUN_SZ_FPU.W)
    val FPU_FLE_S  = 13.asUInt(FUN_SZ_FPU.W)
    val FPU_FCLASS_S= 14.asUInt(FUN_SZ_FPU.W)
+   val FPU_FCVT_W_S= 15.asUInt(FUN_SZ_FPU.W)
+   val FPU_FCVT_WU_S=16.asUInt(FUN_SZ_FPU.W)
+   val FPU_FCVT_S_W= 17.asUInt(FUN_SZ_FPU.W)
+   val FPU_FCVT_S_WU=18.asUInt(FUN_SZ_FPU.W)
+   val FPU_COPY_1 = 19.asUInt(FUN_SZ_FPU.W)
+   val FPU_COPY_2 = 20.asUInt(FUN_SZ_FPU.W)
    val FPU_X      = 0.asUInt(FUN_SZ_FPU.W)
 
    // Writeback Select Signal
@@ -156,6 +162,14 @@ trait ScalarOpConstants
    val MSK_W   = 4.asUInt(3.W)
    val MSK_X   = 4.asUInt(3.W)
 
+   // Rounding Mode
+   val RM_RNE  = 0.asUInt(3.W)
+   val RM_RTZ  = 1.asUInt(3.W)
+   val RM_RDN  = 2.asUInt(3.W)
+   val RM_RUP  = 3.asUInt(3.W)
+   val RM_RMM  = 4.asUInt(3.W)
+   val RM_DYN  = 7.asUInt(3.W)
+   val RM_X    = 0.asUInt(3.W)
 }
 
 }
