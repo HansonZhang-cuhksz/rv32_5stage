@@ -283,12 +283,10 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
    }
 
    val exe_inst_is_load = RegInit(false.B)
-   val exe_inst_is_fload = RegInit(false.B)
 
    when (!full_stall)
    {
-      exe_inst_is_load := cs_mem_en && (cs_mem_fcn === M_XRD) && cs_rf_wen
-      exe_inst_is_fload := cs_mem_en && (cs_mem_fcn === M_XRD) && cs_frf_wen  // F extension
+      exe_inst_is_load := cs_mem_en && (cs_mem_fcn === M_XRD) && (cs_rf_wen || cs_frf_wen)
    }
 
    // Clear instruction exception (from the "instruction" following xret) when returning from trap
@@ -305,9 +303,9 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
       // stall for load-use hazard
       stall := ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs1_oen) ||
                ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_addr) && (exe_reg_wbaddr =/= 0.U) && dec_rs2_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||  // F extension
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||  // F extension
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
                (exe_reg_is_csr)
    }
    else
@@ -330,9 +328,9 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                ((exe_reg_fwbaddr === dec_rs3_faddr) && exe_reg_ctrl_frf_wen && dec_frs3_oen) ||
                ((mem_reg_fwbaddr === dec_rs3_faddr) && mem_reg_ctrl_frf_wen && dec_frs3_oen) ||
                ((wb_reg_fwbaddr  === dec_rs3_faddr) &&  wb_reg_ctrl_frf_wen && dec_frs3_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
-               ((exe_inst_is_fload) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
                ((exe_reg_is_csr))
    }
 

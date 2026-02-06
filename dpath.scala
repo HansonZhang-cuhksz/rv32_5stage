@@ -338,26 +338,32 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       dec_op1_data := MuxCase(rf_rs1_data, Array(
                            ((io.ctl.op1_sel === OP1_IMZ)) -> imm_z,
                            ((io.ctl.op1_sel === OP1_PC)) -> dec_reg_pc,
-                           ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_alu_fun =/= ALU_X)) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_fpu_fun =/= FPU_X)) -> exe_fpu_out,
                            ((mem_reg_wbaddr === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs1_addr) && (dec_rs1_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen) -> wb_reg_wbdata
                            ))
 
       dec_op2_data := MuxCase(dec_alu_op2, Array(
-                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2) && (exe_reg_ctrl_alu_fun =/= ALU_X)) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2) && (exe_reg_ctrl_fpu_fun =/= FPU_X)) -> exe_fpu_out,
                            ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && mem_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen && (io.ctl.op2_sel === OP2_RS2)) -> wb_reg_wbdata
                            ))
 
       dec_rs2_data := MuxCase(rf_rs2_data, Array(
-                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_alu_fun =/= ALU_X)) -> exe_alu_out,
+                           ((exe_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_fpu_fun =/= FPU_X)) -> exe_fpu_out,
                            ((mem_reg_wbaddr === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
                            ((wb_reg_wbaddr  === dec_rs2_addr) && (dec_rs2_addr =/= 0.U) &&  wb_reg_ctrl_rf_wen) -> wb_reg_wbdata
                            ))
       // F extension
-      dec_fpu_op1_data := MuxCase(f_rf_rs1_data, Array(
-                           ((exe_reg_fwbaddr === dec_rs1_faddr) && exe_reg_ctrl_frf_wen) -> exe_fpu_out,
-                           ((mem_reg_fwbaddr === dec_rs1_faddr) && mem_reg_ctrl_frf_wen) -> mem_fwbdata,
+      val dec_fpu_op1_intreg = (io.ctl.fpu_fun === FPU_FCVT_S_W) || (io.ctl.fpu_fun === FPU_FCVT_S_WU)
+      dec_fpu_op1_data := MuxCase(Mux(dec_fpu_op1_intreg, rf_rs1_data, f_rf_rs1_data), Array(
+                           ((exe_reg_wbaddr === dec_rs1_addr) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_alu_fun =/= ALU_X) && dec_fpu_op1_intreg) -> exe_alu_out,
+                           ((exe_reg_fwbaddr === dec_rs1_faddr) && exe_reg_ctrl_frf_wen && (exe_reg_ctrl_fpu_fun =/= FPU_X) && !dec_fpu_op1_intreg) -> exe_fpu_out,
+                           ((mem_reg_wbaddr === dec_rs1_addr) && mem_reg_ctrl_rf_wen && dec_fpu_op1_intreg) -> mem_wbdata,
+                           ((mem_reg_fwbaddr === dec_rs1_faddr) && mem_reg_ctrl_frf_wen && !dec_fpu_op1_intreg) -> mem_fwbdata,
                            ((wb_reg_fwbaddr  === dec_rs1_faddr) &&  wb_reg_ctrl_frf_wen) -> wb_reg_fwbdata
                            ))
       dec_fpu_op2_data := MuxCase(f_rf_rs2_data, Array(
@@ -381,10 +387,7 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       dec_rs2_data := rf_rs2_data
       dec_op2_data := dec_alu_op2
       // F extension
-      dec_fpu_op1_data := Mux((io.ctl.fpu_fun === FPU_FCVT_S_W) || (io.ctl.fpu_fun === FPU_FCVT_S_WU),
-                           rf_rs1_data,
-                           f_rf_rs1_data
-                           )
+      dec_fpu_op1_data := Mux((io.ctl.fpu_fun === FPU_FCVT_S_W) || (io.ctl.fpu_fun === FPU_FCVT_S_WU), rf_rs1_data, f_rf_rs1_data)
       dec_fpu_op2_data := f_rf_rs2_data
       dec_fpu_op3_data := f_rf_rs3_data
    }

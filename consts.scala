@@ -18,7 +18,7 @@ trait SodorProcConstants
 
    //************************************
    // Machine Parameters
-   val USE_FULL_BYPASSING = false // turn on full bypassing (only stalls
+   val USE_FULL_BYPASSING = true  // turn on full bypassing (only stalls
                                   // on load-use). Otherwise rely
                                   // entirely on interlocking to handle
                                   // pipeline hazards.
@@ -78,27 +78,27 @@ trait ScalarOpConstants
 
    // ALU Operation Signal
    val FUN_SZ_ALU = 5   // To support more ALU operations
-   val ALU_ADD    = 0.asUInt(FUN_SZ_ALU.W)
-   val ALU_SUB    = 1.asUInt(FUN_SZ_ALU.W)
-   val ALU_SLL    = 2.asUInt(FUN_SZ_ALU.W)
-   val ALU_SRL    = 3.asUInt(FUN_SZ_ALU.W)
-   val ALU_SRA    = 4.asUInt(FUN_SZ_ALU.W)
-   val ALU_AND    = 5.asUInt(FUN_SZ_ALU.W)
-   val ALU_OR     = 6.asUInt(FUN_SZ_ALU.W)
-   val ALU_XOR    = 7.asUInt(FUN_SZ_ALU.W)
-   val ALU_SLT    = 8.asUInt(FUN_SZ_ALU.W)
-   val ALU_SLTU   = 9.asUInt(FUN_SZ_ALU.W)
-   val ALU_COPY_1 = 10.asUInt(FUN_SZ_ALU.W)
-   val ALU_COPY_2 = 11.asUInt(FUN_SZ_ALU.W)
+   val ALU_ADD    = 1.asUInt(FUN_SZ_ALU.W)
+   val ALU_SUB    = 2.asUInt(FUN_SZ_ALU.W)
+   val ALU_SLL    = 3.asUInt(FUN_SZ_ALU.W)
+   val ALU_SRL    = 4.asUInt(FUN_SZ_ALU.W)
+   val ALU_SRA    = 5.asUInt(FUN_SZ_ALU.W)
+   val ALU_AND    = 6.asUInt(FUN_SZ_ALU.W)
+   val ALU_OR     = 7.asUInt(FUN_SZ_ALU.W)
+   val ALU_XOR    = 8.asUInt(FUN_SZ_ALU.W)
+   val ALU_SLT    = 9.asUInt(FUN_SZ_ALU.W)
+   val ALU_SLTU   = 10.asUInt(FUN_SZ_ALU.W)
+   val ALU_COPY_1 = 11.asUInt(FUN_SZ_ALU.W)
+   val ALU_COPY_2 = 12.asUInt(FUN_SZ_ALU.W)
    // M extension
-   val ALU_MUL    = 12.asUInt(FUN_SZ_ALU.W)
-   val ALU_MULH   = 13.asUInt(FUN_SZ_ALU.W)
-   val ALU_MULHSU = 14.asUInt(FUN_SZ_ALU.W)
-   val ALU_MULHU  = 15.asUInt(FUN_SZ_ALU.W)
-   val ALU_DIV    = 16.asUInt(FUN_SZ_ALU.W)
-   val ALU_DIVU   = 17.asUInt(FUN_SZ_ALU.W)
-   val ALU_REM    = 18.asUInt(FUN_SZ_ALU.W)
-   val ALU_REMU   = 19.asUInt(FUN_SZ_ALU.W)
+   val ALU_MUL    = 13.asUInt(FUN_SZ_ALU.W)
+   val ALU_MULH   = 14.asUInt(FUN_SZ_ALU.W)
+   val ALU_MULHSU = 15.asUInt(FUN_SZ_ALU.W)
+   val ALU_MULHU  = 16.asUInt(FUN_SZ_ALU.W)
+   val ALU_DIV    = 17.asUInt(FUN_SZ_ALU.W)
+   val ALU_DIVU   = 18.asUInt(FUN_SZ_ALU.W)
+   val ALU_REM    = 19.asUInt(FUN_SZ_ALU.W)
+   val ALU_REMU   = 20.asUInt(FUN_SZ_ALU.W)
    val ALU_X      = 0.asUInt(FUN_SZ_ALU.W)
 
    // FPU Operation Signal
