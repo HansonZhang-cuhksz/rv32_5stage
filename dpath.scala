@@ -360,10 +360,10 @@ class DatPath(implicit val p: Parameters, val conf: SodorCoreParams) extends Mod
       // F extension
       val dec_fpu_op1_intreg = (io.ctl.fpu_fun === FPU_FCVT_S_W) || (io.ctl.fpu_fun === FPU_FCVT_S_WU)
       dec_fpu_op1_data := MuxCase(Mux(dec_fpu_op1_intreg, rf_rs1_data, f_rf_rs1_data), Array(
-                           ((exe_reg_wbaddr === dec_rs1_addr) && exe_reg_ctrl_rf_wen && (exe_reg_ctrl_alu_fun =/= ALU_X) && dec_fpu_op1_intreg) -> exe_alu_out,
-                           ((exe_reg_fwbaddr === dec_rs1_faddr) && exe_reg_ctrl_frf_wen && (exe_reg_ctrl_fpu_fun =/= FPU_X) && !dec_fpu_op1_intreg) -> exe_fpu_out,
-                           ((mem_reg_wbaddr === dec_rs1_addr) && mem_reg_ctrl_rf_wen && dec_fpu_op1_intreg) -> mem_wbdata,
-                           ((mem_reg_fwbaddr === dec_rs1_faddr) && mem_reg_ctrl_frf_wen && !dec_fpu_op1_intreg) -> mem_fwbdata,
+                           ((exe_reg_wbaddr === dec_rs1_addr) && exe_reg_ctrl_rf_wen) -> exe_alu_out,
+                           ((exe_reg_fwbaddr === dec_rs1_faddr) && exe_reg_ctrl_frf_wen) -> exe_fpu_out,
+                           ((mem_reg_wbaddr === dec_rs1_addr) && mem_reg_ctrl_rf_wen) -> mem_wbdata,
+                           ((mem_reg_fwbaddr === dec_rs1_faddr) && mem_reg_ctrl_frf_wen) -> mem_fwbdata,
                            ((wb_reg_fwbaddr  === dec_rs1_faddr) &&  wb_reg_ctrl_frf_wen) -> wb_reg_fwbdata
                            ))
       dec_fpu_op2_data := MuxCase(f_rf_rs2_data, Array(

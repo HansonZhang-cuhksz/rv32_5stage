@@ -306,7 +306,12 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||  // F extension
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs1_faddr) && (exe_reg_wbaddr =/= 0.U) && dec_frs1_oen) || // int writes, fp reads
+               ((exe_inst_is_load) && (exe_reg_wbaddr === dec_rs2_faddr) && (exe_reg_wbaddr =/= 0.U) && dec_frs2_oen) ||
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs1_addr) && dec_rs1_oen) || // fp writes, int reads
+               ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs2_addr) && dec_rs2_oen) ||
                (exe_reg_is_csr)
+               
    }
    else
    {
@@ -331,6 +336,18 @@ class CtlPath(implicit val conf: SodorCoreParams) extends Module
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs1_faddr) && dec_frs1_oen) ||
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs2_faddr) && dec_frs2_oen) ||
                ((exe_inst_is_load) && (exe_reg_fwbaddr === dec_rs3_faddr) && dec_frs3_oen) ||
+               ((exe_reg_wbaddr === dec_rs1_faddr) && exe_reg_ctrl_rf_wen && dec_frs1_oen) || // int writes, fp reads
+               ((mem_reg_wbaddr === dec_rs1_faddr) && mem_reg_ctrl_rf_wen && dec_frs1_oen) ||
+               ((wb_reg_wbaddr  === dec_rs1_faddr) && wb_reg_ctrl_rf_wen && dec_frs1_oen) ||
+               ((exe_reg_wbaddr === dec_rs2_faddr) && exe_reg_ctrl_rf_wen && dec_frs2_oen) ||
+               ((mem_reg_wbaddr === dec_rs2_faddr) && mem_reg_ctrl_rf_wen && dec_frs2_oen) ||
+               ((wb_reg_wbaddr  === dec_rs2_faddr) && wb_reg_ctrl_rf_wen && dec_frs2_oen) ||
+               ((exe_reg_fwbaddr === dec_rs1_addr) && exe_reg_ctrl_frf_wen && dec_rs1_oen) || // fp writes, int reads
+               ((mem_reg_fwbaddr === dec_rs1_addr) && mem_reg_ctrl_frf_wen && dec_rs1_oen) ||
+               ((wb_reg_fwbaddr  === dec_rs1_addr) && wb_reg_ctrl_frf_wen && dec_rs1_oen) ||
+               ((exe_reg_fwbaddr === dec_rs2_addr) && exe_reg_ctrl_frf_wen && dec_rs2_oen) ||
+               ((mem_reg_fwbaddr === dec_rs2_addr) && mem_reg_ctrl_frf_wen && dec_rs2_oen) ||
+               ((wb_reg_fwbaddr  === dec_rs2_addr) && wb_reg_ctrl_frf_wen && dec_rs2_oen) ||
                ((exe_reg_is_csr))
    }
 
